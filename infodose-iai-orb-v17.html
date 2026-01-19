@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Fusion OS v12 — Dual Pulse (Inline)</title>
+
+  <style>
+    /* ---------- ROOT THEME ---------- */
+    :root {
+      --bg: #030303;
+      --glass: rgba(255, 255, 255, 0.03);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --active-color: #7afff5;
+      --active-glow: rgba(122,255,245,0.15);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+    html,body { height: 100%; }
+    body { 
+      background: var(--bg); 
+      color: #fff; 
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial;
+      overflow: hidden; 
+      height: 100vh; width: 100vw;
+      user-select: none;
+      margin:0;
+      transition: background 1s ease;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+
+    /* ---------- BASIC LAYOUT HELPERS (subset of needed utilities) ---------- */
+    .flex { display:flex; }
+    .items-center { align-items:center; }
+    .items-start { align-items:flex-start; }
+    .justify-between { justify-content:space-between; }
+    .justify-center { justify-content:center; }
+    .text-center { text-align:center; }
+    .absolute { position:absolute; }
+    .fixed { position:fixed; }
+    .relative { position:relative; }
+    .hidden { display:none; }
+    .uppercase { text-transform:uppercase; }
+    .font-black { font-weight:900; }
+    .font-bold { font-weight:700; }
+    .truncate { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .mx-auto { margin-left:auto; margin-right:auto; }
+    .max-w-2xl { max-width:42rem; }
+    .pointer-events-none { pointer-events:none; }
+    .pointer-events-auto { pointer-events:auto; }
+    .cursor-grab { cursor:grab; }
+    .cursor-pointer { cursor:pointer; }
+    .group:hover .group-hover\\:opacity-100 { opacity: 1; }
+    .animate-pulse { animation: pulse 1.6s infinite ease-in-out; }
+    @keyframes pulse { 0%{opacity:1}50%{opacity:.4}100%{opacity:1} }
+    .animate-bounce { animation: bounce 1s infinite; }
+    @keyframes bounce { 0%,100%{transform:translateY(0)}50%{transform:translateY(6px)} }
+
+    /* ---------- SPACING (used sizes) ---------- */
+    .px-6 { padding-left:1.5rem; padding-right:1.5rem; }
+    .py-8 { padding-top:2rem; padding-bottom:2rem; }
+    .pt-28 { padding-top:7rem; }
+    .p-6 { padding:1.5rem; }
+    .p-4 { padding:1rem; }
+    .p-3 { padding:.75rem; }
+    .p-12 { padding:3rem; }
+    .pb-32 { padding-bottom:8rem; }
+    .mb-8 { margin-bottom:2rem; }
+    .mb-6 { margin-bottom:1.5rem; }
+    .mt-12 { margin-top:3rem; }
+    .mt-4 { margin-top:1rem; }
+    .mb-10 { margin-bottom:2.5rem; }
+    .gap-2 { gap:.5rem; }
+    .gap-3 { gap:.75rem; }
+    .gap-4 { gap:1rem; }
+    .gap-8 { gap:2rem; }
+
+    /* ---------- ATMOSPHERE GLOWS ---------- */
+    .ambient-glow {
+        position: fixed; pointer-events: none; z-index: 0;
+        border-radius: 50%; filter: blur(100px); opacity: 0.2;
+        transition: background 1s ease, opacity 1s ease;
+    }
+    #glow-top { top: -20%; left: -20%; width: 80vw; height: 80vw; background: var(--active-color); }
+    #glow-bottom { bottom: -20%; right: -20%; width: 80vw; height: 80vw; background: var(--active-color); opacity: 0.1; }
+
+    /* ---------- HORIZONTAL VIEWPORT ---------- */
+    #universe-viewport {
+      display: flex;
+      width: 300vw;
+      height: 100vh;
+      transform: translateX(-100vw);
+      transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+      position: relative; z-index: 10;
+    }
+    .screen-panel {
+      width: 100vw; height: 100vh;
+      position: relative; flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    /* ---------- VERTICAL SCROLL SYSTEM (NEXUS) ---------- */
+    .vertical-scroll-container {
+      height: 100vh;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      scrollbar-width: none;
+    }
+    .vertical-scroll-container::-webkit-scrollbar { display: none; }
+
+    .v-section {
+      height: 100vh;
+      width: 100%;
+      scroll-snap-align: start;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 0 24px;
+      position: relative;
+    }
+
+    /* ---------- GLASS DESIGN ---------- */
+    .glass-card {
+      background: var(--glass);
+      backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+      border: 1px solid var(--glass-border);
+      border-radius: 28px;
+      transition: all 0.3s ease;
+    }
+    .glass-card:active { transform: scale(0.98); }
+
+    .glass-pill {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: all 0.3s ease;
+      display:inline-flex;
+      align-items:center;
+      gap:.5rem;
+    }
+
+    /* ORB ANIMATION / SYMBOL */
+    .orb-wrapper { display:flex; align-items:center; justify-content:center; width:320px; height:320px; margin:auto; border-radius:999px; position:relative; }
+    .halo { position:absolute; width:100%; height:100%; border-radius:50%; background: radial-gradient(circle at center, rgba(255,255,255,0.06), transparent 45%); filter: blur(20px); }
+    .symbol svg { display:block; }
+
+    /* NAV DOTS */
+    #nav-indicator {
+        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+        display: flex; gap: 8px; z-index: 80; pointer-events: none;
+    }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.2); transition: 0.3s; }
+    .dot.active { width: 24px; background: var(--active-color); box-shadow: 0 0 10px var(--active-color); }
+
+    /* VIDEO CAROUSEL */
+    .video-row { display:flex; gap:16px; overflow-x:auto; padding:10px 0; }
+    .video-card { width:220px; flex-shrink:0; border-radius:18px; overflow:hidden; }
+
+    /* SMALL UTILITIES */
+    .text-dynamic { color: var(--active-color); transition: color 0.5s; }
+    .border-dynamic { border-color: var(--active-color); transition: border-color 0.5s; }
+    input, textarea { background: transparent; color: #fff; border: none; outline: none; font: inherit; }
+    .text-white\\/60 { color: rgba(255,255,255,0.6); }
+    .text-white\\/30 { color: rgba(255,255,255,0.3); }
+    .text-white\\/80 { color: rgba(255,255,255,0.8); }
+    .w-full { width:100%; }
+    .h-full { height:100%; }
+    .aspect-video { aspect-ratio: 16/9; }
+    .rounded-3xl { border-radius: 24px; }
+    .shadow-2xl { box-shadow: 0 20px 40px rgba(0,0,0,0.6); }
+    .uppercase { text-transform:uppercase; }
+
+    /* small responsive fix */
+    @media (max-width:720px){ .text-6xl{ font-size:2.2rem; } .pt-28{ padding-top:4.5rem; } .px-6{ padding-left:1rem; padding-right:1rem; } }
+  </style>
+</head>
+<body>
+
+  <!-- AMBIENT LAYER -->
+  <div id="glow-top" class="ambient-glow"></div>
+  <div id="glow-bottom" class="ambient-glow"></div>
+
+  <!-- HEADER INFOBAR -->
+  <header class="fixed top-0 left-0 right-0 z-100 px-6 py-8 flex justify-between items-start pointer-events-none" style="width:100%;box-sizing:border-box;">
+    <!-- ESQUERDA: NOME DO USUÁRIO (Pedido: trocar fusion pelo di_userName) -->
+    <div class="glass-pill flex items-center gap-3 pointer-events-auto active" onclick="Navigation.to(1)" style="display:inline-flex;">
+      <div id="header-dot" class="w-2 h-2 rounded-full animate-pulse" style="width:8px;height:8px;border-radius:50%;background:var(--active-color)"></div>
+      <span id="displayUserHeader" class="text-[10px] tracking-widest uppercase">Visitante</span>
+    </div>
+
+    <!-- DIREITA: NOME DO INFODOSE -->
+    <div class="glass-pill flex items-center gap-2 pointer-events-auto">
+       <span id="displayInfodoseHeader" class="text-[9px] text-white/60">Sistema</span>
+    </div>
+  </header>
+
+  <!-- UNIVERSE (Horizontal Screens) -->
+  <div id="universe-viewport">
+      
+      <!-- [0] CORTEX (Memória) -->
+      <section class="screen-panel" id="view-cortex">
+          <div class="pt-28 px-6 h-full flex flex-col max-w-2xl mx-auto" style="margin-left:auto;margin-right:auto;">
+              <div class="flex items-center justify-between mb-8" style="display:flex;align-items:center;justify-content:space-between;">
+                  <h2 class="text-2xl font-black uppercase tracking-tighter">Córtex</h2>
+                  <div class="flex gap-4 text-[10px] font-bold uppercase">
+                      <button onclick="Cortex.switch('crystal')" id="tab-crystal" class="tab-btn active">Cristal</button>
+                      <button onclick="Cortex.switch('train')" id="tab-train" class="tab-btn">Matriz</button>
+                  </div>
+              </div>
+
+              <div class="flex-1 overflow-y-auto pb-32" style="overflow-y:auto;flex:1;padding-bottom:8rem;">
+                  <div id="panel-crystal" class="space-y-4">
+                      <div id="crystal-list" class="grid gap-3"></div>
+                      <div class="glass-card p-4 flex gap-3 mt-6" style="display:flex;align-items:center;gap:.75rem;margin-top:1.5rem;">
+                          <input id="crystal-input" class="flex-1 bg-transparent border-none text-sm text-white placeholder-white/30" placeholder="Fixar nova memória..." />
+                          <button onclick="Cortex.addCrystal()" class="text-dynamic font-bold text-xs uppercase">Salvar</button>
+                      </div>
+                  </div>
+
+                  <div id="panel-train" class="hidden space-y-4">
+                      <div class="h-80 glass-card p-4" style="height:20rem;">
+                          <textarea id="train-editor" class="w-full h-full bg-transparent border-none text-xs font-mono text-white/70 resize-none outline-none" placeholder="Definições de treino..."></textarea>
+                      </div>
+                      <button onclick="Cortex.saveTrain()" class="glass-pill w-full text-center text-dynamic py-3" style="width:100%;text-align:center;padding-top:12px;padding-bottom:12px;">Aplicar Matriz</button>
+                  </div>
+              </div>
+          </div>
+      </section>
+
+      <!-- [1] NEXUS (Vertical Core) -->
+      <section class="screen-panel" id="view-nexus">
+          <div class="vertical-scroll-container">
+              
+              <!-- SECTION 1: HERO ORB -->
+              <div class="v-section">
+                  <div class="text-center mb-12">
+                      <!-- Título Central = di_infodoseName -->
+                      <h1 id="hero-title" class="text-6xl font-black tracking-tighter mb-2 bg-clip-text text-transparent" style="font-size:4rem; margin:0 0 0.5rem 0; background: linear-gradient(to bottom, white, rgba(122,255,245,0.2)); -webkit-background-clip:text;">Nexus</h1>
+                      <div class="flex items-center justify-center gap-2" style="display:flex;align-items:center;justify-content:center;gap:.5rem;">
+                        <span class="w-8 h-[1px] bg-white/20" style="display:inline-block;width:2rem;height:1px;background:rgba(255,255,255,0.12)"></span>
+                        <p class="text-[9px] uppercase tracking-[0.6em] text-white/30" style="letter-spacing:.6em;color:rgba(255,255,255,0.3);margin:0">PULSO DUAL</p>
+                        <span class="w-8 h-[1px] bg-white/20" style="display:inline-block;width:2rem;height:1px;background:rgba(255,255,255,0.12)"></span>
+                      </div>
+                  </div>
+
+                  <!-- THE ORB -->
+                  <div id="orbClickable" class="relative group cursor-grab touch-none p-12"
+                       onmousedown="OrbDrag.start(event)" ontouchstart="OrbDrag.start(event)"
+                       onmouseup="OrbDrag.end()" ontouchend="OrbDrag.end()"
+                       onmousemove="OrbDrag.move(event)" ontouchmove="OrbDrag.move(event)" style="padding:3rem;">
+                     
+                     <!-- SECTION 1: ORB -->
+  <section class="section">
+    <div class="orb-wrapper" id="orb">
+      <div class="halo"></div>
+      <div class="symbol" id="orbContainer">
+        <svg width="160" height="160" viewBox="0 0 200 200" aria-hidden="true">
+          <defs>
+            <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#fff" stop-opacity="0.6"/>
+              <stop offset="100%" stop-color="#fff" stop-opacity="0.2"/>
+            </linearGradient>
+          </defs>
+          <circle cx="100" cy="100" r="90" stroke="url(#grad)" stroke-width="2" fill="none"/>
+          <line x1="100" y1="10" x2="100" y2="190" stroke="url(#grad)" stroke-width="3" opacity="0.2"/>
+          <path d="M100 10 A90 90 0 0 0 100 190" stroke="url(#grad)" stroke-width="6" fill="none"/>
+        </svg>
+      </div>
+    </div>
+<p style="opacity:.3;margin-top:40px; text-align:center;">arraste para baixo</p>
+  </section>
+</div>
+                  <div class="mt-12 animate-bounce opacity-20" style="margin-top:3rem; opacity:.2;"><i data-lucide="chevron-down"></i></div>
+              </div>
+
+              <!-- SECTION 2: ESTADOS SUGESTIVOS (Micro-personalizações) -->
+              <div class="v-section">
+                  <div class="glass-card w-full p-8 space-y-8 transition-colors duration-1000" id="protocols-card" style="padding:2rem; width:100%; max-width:48rem;">
+                      <h3 class="text-xs font-black uppercase tracking-widest text-white/40 text-center" style="text-align:center;color:rgba(255,255,255,0.4);margin:0 0 1rem 0;">Modulação de Estado</h3>
+                      <div class="grid grid-cols-2 gap-4" style="display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;">
+                          <!-- Gamma -> Hiperfoco -->
+                          <button onclick="Atmosphere.set('gamma')" class="glass-card p-6 flex flex-col items-center gap-3 active:scale-95 transition hover:bg-white/5 group" style="padding:1.5rem;display:flex;flex-direction:column;align-items:center;gap:.75rem;">
+                              <i data-lucide="zap" class="text-blue-400 group-hover:scale-110 transition-transform" style="font-size:18px;"></i>
+                              <span class="text-[10px] font-bold uppercase" style="font-weight:700;">Hiperfoco</span>
+                          </button>
+                          <!-- Alpha -> Fluxo Criativo -->
+                          <button onclick="Atmosphere.set('alpha')" class="glass-card p-6 flex flex-col items-center gap-3 active:scale-95 transition hover:bg-white/5 group" style="padding:1.5rem;display:flex;flex-direction:column;align-items:center;gap:.75rem;">
+                              <i data-lucide="sparkles" class="text-purple-400 group-hover:scale-110 transition-transform" style="font-size:18px;"></i>
+                              <span class="text-[10px] font-bold uppercase" style="font-weight:700;">Fluxo Criativo</span>
+                          </button>
+                          <!-- Theta -> Imersão Zen -->
+                          <button onclick="Atmosphere.set('theta')" class="glass-card p-6 flex flex-col items-center gap-3 active:scale-95 transition hover:bg-white/5 group" style="padding:1.5rem;display:flex;flex-direction:column;align-items:center;gap:.75rem;">
+                              <i data-lucide="moon" class="text-emerald-400 group-hover:scale-110 transition-transform" style="font-size:18px;"></i>
+                              <span class="text-[10px] font-bold uppercase" style="font-weight:700;">Imersão Zen</span>
+                          </button>
+                          <!-- Delta -> Regeneração -->
+                          <button onclick="Atmosphere.set('delta')" class="glass-card p-6 flex flex-col items-center gap-3 active:scale-95 transition hover:bg-white/5 group" style="padding:1.5rem;display:flex;flex-direction:column;align-items:center;gap:.75rem;">
+                              <i data-lucide="waves" class="text-cyan-400 group-hover:scale-110 transition-transform" style="font-size:18px;"></i>
+                              <span class="text-[10px] font-bold uppercase" style="font-weight:700;">Regeneração</span>
+                          </button>
+                      </div>
+                      <div class="text-center" style="text-align:center;">
+                          <p class="text-[9px] text-white/20 uppercase tracking-widest" style="color:rgba(255,255,255,0.2);letter-spacing:.3em;">Ajuste de Chaves Abaixo</p>
+                          <i data-lucide="chevron-down" class="w-4 h-4 mx-auto text-white/20 mt-2" style="display:inline-block;margin-top:.5rem;"></i>
+                      </div>
+                  </div>
+              </div>
+
+              <!-- SECTION 3: KEY MANAGER -->
+              <div class="v-section">
+                  <div class="glass-card w-full p-6 flex flex-col h-[70vh]" style="padding:1.5rem;display:flex;flex-direction:column;height:70vh;">
+                      <div class="flex justify-between items-center mb-6" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+                        <h3 class="text-sm font-black uppercase tracking-widest text-dynamic">Configuração de Chaves</h3>
+                        <i data-lucide="key" class="w-4 h-4 text-white/30" style="font-size:18px;"></i>
+                      </div>
+                      
+                      <div id="vKeysList" class="flex-1 overflow-y-auto pr-2 space-y-4" style="overflow-y:auto;flex:1;padding-right:.5rem;display:flex;flex-direction:column;gap:1rem;">
+                          <!-- JS Populates -->
+                      </div>
+
+                      <button onclick="KeysManager.save()" class="mt-4 glass-pill bg-white/5 text-dynamic border-dynamic w-full py-4 font-bold hover:bg-white/10" style="margin-top:1rem;width:100%;padding-top:1rem;padding-bottom:1rem;">
+                          REINICIAR SISTEMA
+                      </button>
+                  </div>
+              </div>
+
+          </div>
+      </section>
+
+      <!-- [2] DUALTUBE -->
+      <section class="screen-panel bg-[#050505]" id="view-dualtube">
+          <div class="pt-28 px-6 h-full flex flex-col overflow-y-auto pb-32" style="padding-top:7rem;padding-left:1.5rem;padding-right:1.5rem;height:100%;display:flex;flex-direction:column;overflow-y:auto;">
+              <div class="mb-10" style="margin-bottom:2.5rem;">
+                <h2 class="text-3xl font-black text-white">DualTube</h2>
+                <p class="text-[10px] text-dynamic uppercase tracking-[0.4em] font-bold">Curadoria Visual</p>
+              </div>
+
+              <div id="video-categories" class="space-y-12" style="display:flex;flex-direction:column;gap:3rem;">
+                  <!-- JS Populates -->
+              </div>
+          </div>
+      </section>
+  </div>
+
+  <!-- NAV INDICATOR -->
+  <div id="nav-indicator">
+      <div class="dot" id="dot-0"></div>
+      <div class="dot active" id="dot-1"></div>
+      <div class="dot" id="dot-2"></div>
+  </div>
+
+  <!-- PLAYER OVERLAY -->
+  <div id="player-overlay" class="fixed inset-0 z-200 bg-black/95 backdrop-blur-3xl hidden flex-col" style="position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.95);backdrop-filter:blur(20px);display:none;flex-direction:column;">
+      <div class="p-6 flex justify-end" style="padding:1.5rem;display:flex;justify-content:flex-end;"><button onclick="closePlayer()" class="glass-pill border-red-500/40 text-red-400 hover:bg-red-500/10">Fechar Sessão</button></div>
+      <div class="flex-1 flex items-center justify-center p-4" style="flex:1;display:flex;align-items:center;justify-content:center;padding:1rem;">
+          <div id="yt-embed" class="w-full max-w-5xl aspect-video bg-black rounded-3xl border border-white/10 shadow-2xl overflow-hidden" style="width:100%;max-width:80rem;background:#000;border-radius:24px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);"></div>
+      </div>
+  </div>
+
+  <div id="di_toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-300 pointer-events-none flex flex-col gap-2 w-max max-w-[90vw]" style="position:fixed;left:50%;bottom:6rem;transform:translateX(-50%);z-index:300;pointer-events:none;display:flex;flex-direction:column;gap:0.5rem;"></div>
+
+  <!-- ---------- INLINE ICONS + MAIN SCRIPT (no external CDN) ---------- -->
+  <script>
+    /* ======= lightweight lucide-like icon renderer ======= */
+    const iconMap = {
+      "chevron-down": '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>',
+      "zap": '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+      "sparkles": '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l2 2 4-4"/><path d="M19 8l1-1"/><path d="M15 3l1-1"/><path d="M12 7l1-1"/></svg>',
+      "moon": '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>',
+      "waves": '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-4 8-4 8 4 12 4"/><path d="M2 20s3-4 8-4 8 4 12 4"/></svg>',
+      "key": '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 2l-6 6"/><circle cx="7" cy="14" r="4"/><path d="M7 14l8-8"/></svg>',
+      "play-circle": '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4z" fill="currentColor" stroke="none"/></svg>',
+      "trash": '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>'
+    };
+
+    window.lucide = {
+      createIcons: function() {
+        const nodes = document.querySelectorAll('[data-lucide]');
+        nodes.forEach(n => {
+          const name = (n.getAttribute('data-lucide') || '').trim();
+          if(!name) return;
+          const svg = iconMap[name] || '';
+          n.innerHTML = svg;
+          n.removeAttribute('data-lucide');
+          // let icons inherit color from parent (so .text-dynamic works)
+          const svgel = n.querySelector('svg');
+          if(svgel) svgel.style.display = 'inline-block';
+        });
+      }
+    };
+
+    /* ======= APPLICATION SCRIPT (adapted) ======= */
+
+    // --- CONFIG & KEYS ---
+    const KEYS = {
+        USER: 'di_userName',
+        API: 'di_apiKey',
+        MODEL: 'di_modelName',
+        INFODOSE: 'di_infodoseName',
+        TRAIN_TXT: 'di_trainingText',
+        TRAIN_FILE: 'di_trainingFileName',
+        TRAIN_ACTIVE: 'di_trainingActive',
+        CRYSTAL: 'di_cristalizados'
+    };
+
+    const STATE = {
+        screen: 1,
+        crystals: [],
+        currentColor: '#7afff5'
+    };
+
+    window.onload = () => {
+        lucide.createIcons();
+        initData();
+        Navigation.to(1);
+    };
+
+    function initData() {
+        // Identity Loading
+        const user = localStorage.getItem(KEYS.USER) || 'Piloto';
+        const info = localStorage.getItem(KEYS.INFODOSE) || 'FUSION';
+        
+        // Header Swap Logic (Requested)
+        document.getElementById('displayUserHeader').innerText = user;   // Left Pill
+        document.getElementById('displayInfodoseHeader').innerText = info; // Right Pill
+        document.getElementById('hero-title').innerText = info; // Center Title
+
+        // Welcome Message (Requested)
+        setTimeout(() => {
+            toast(`oi dual, ${user}, ${info} ativo em pulso DUAL!`, 5000);
+        }, 800);
+
+        // Cortex Data
+        try { STATE.crystals = JSON.parse(localStorage.getItem(KEYS.CRYSTAL) || '[]'); } catch(e){ STATE.crystals = []; }
+        Cortex.renderCrystals();
+        const trainVal = localStorage.getItem(KEYS.TRAIN_TXT) || '';
+        const trainEditor = document.getElementById('train-editor');
+        if(trainEditor) trainEditor.value = trainVal;
+
+        // Init Managers
+        KeysManager.render();
+        DualTube.render();
+        // ensure icons created for dynamically inserted icon placeholders
+        setTimeout(() => lucide.createIcons(), 80);
+        // apply initial color
+        applyActiveColor(STATE.currentColor);
+    }
+
+    function applyActiveColor(color){
+      document.documentElement.style.setProperty('--active-color', color);
+      // update glow elements
+      const gt = document.getElementById('glow-top');
+      const gb = document.getElementById('glow-bottom');
+      if(gt) gt.style.background = color;
+      if(gb) gb.style.background = color;
+      // update header-dot
+      const hd = document.getElementById('header-dot');
+      if(hd) hd.style.background = color;
+      // hero gradient
+      const hero = document.getElementById('hero-title');
+      if(hero) hero.style.background = `linear-gradient(to bottom, white, ${color}44)`;
+    }
+
+    // --- ATMOSPHERE & STATES ---
+    const Atmosphere = {
+        set: (type) => {
+            const root = document.documentElement.style;
+            let color, msg;
+
+            switch(type) {
+                case 'gamma': // Hiperfoco
+                    color = '#3b82f6'; // Blue
+                    msg = 'Hiperfoco Ativado';
+                    break;
+                case 'alpha': // Fluxo
+                    color = '#a855f7'; // Purple
+                    msg = 'Fluxo Criativo Sintonizado';
+                    break;
+                case 'theta': // Zen
+                    color = '#10b981'; // Emerald
+                    msg = 'Imersão Zen Iniciada';
+                    break;
+                case 'delta': // Regen
+                    color = '#7afff5'; // Cyan
+                    msg = 'Frequência Regenerativa';
+                    break;
+                default:
+                    color = '#7afff5';
+            }
+
+            // Apply Changes
+            STATE.currentColor = color;
+            root.setProperty('--active-color', color);
+            applyActiveColor(color);
+
+            // safe style updates (if elements exist)
+            const orbCore = document.getElementById('orb-core');
+            if(orbCore) orbCore.style.backgroundColor = color;
+            const orbIcon = document.getElementById('orb-icon');
+            if(orbIcon) orbIcon.style.color = color;
+
+            // Re-render icons to reflect any color inheritance
+            setTimeout(() => lucide.createIcons(), 50);
+
+            toast(msg);
+        }
+    };
+
+    // --- NAVIGATION ---
+    const Navigation = {
+        to: (idx) => {
+            STATE.screen = idx;
+            document.getElementById('universe-viewport').style.transform = `translateX(-${idx * 100}vw)`;
+            [0,1,2].forEach(i => {
+                const dot = document.getElementById(`dot-${i}`);
+                if(dot) dot.classList.toggle('active', i === idx);
+            });
+        }
+    };
+
+    // Swipe Handling
+    let tsX = 0, tsY = 0;
+    document.addEventListener('touchstart', e => { tsX = e.touches[0].clientX; tsY = e.touches[0].clientY; }, {passive:true});
+    document.addEventListener('touchend', e => {
+        const dX = tsX - e.changedTouches[0].clientX;
+        const dY = tsY - e.changedTouches[0].clientY;
+        if(Math.abs(dX) > Math.abs(dY) && Math.abs(dX) > 80) {
+            if(dX > 0 && STATE.screen < 2) Navigation.to(STATE.screen + 1);
+            if(dX < 0 && STATE.screen > 0) Navigation.to(STATE.screen - 1);
+        }
+    }, {passive:true});
+
+    // Orb Drag (fixed to use existing DOM ids)
+    const OrbDrag = {
+        active: false, startX: 0, el: null,
+        start: function(e) { 
+            this.active = true; 
+            this.startX = e.type && e.type.includes('mouse') ? e.clientX : (e.touches ? e.touches[0].clientX : 0); 
+            this.el = document.getElementById('orbContainer') || document.getElementById('orb') || document.getElementById('orbClickable');
+        },
+        move: function(e) {
+            if(!this.active || !this.el) return;
+            const x = e.type && e.type.includes('mouse') ? e.clientX : (e.touches ? e.touches[0].clientX : 0);
+            const diff = x - this.startX;
+            this.el.style.transform = `translateX(${diff/3}px) rotate(${diff/10}deg)`; 
+        },
+        end: function() {
+            if(!this.active) return;
+            this.active = false;
+            if(!this.el) return;
+            const style = window.getComputedStyle(this.el);
+            let matrix;
+            try { matrix = new DOMMatrixReadOnly(style.transform); } catch(e){ matrix = {m41:0}; }
+            const tx = matrix && matrix.m41 !== undefined ? matrix.m41 : 0;
+            if(tx > 60) Navigation.to(2);
+            else if(tx < -60) Navigation.to(0);
+            this.el.style.transform = 'translateX(0) rotate(0)';
+        }
+    };
+
+    // --- CORTEX ---
+    const Cortex = {
+        switch: (t) => {
+            const pc = document.getElementById('panel-crystal');
+            const pt = document.getElementById('panel-train');
+            if(pc) pc.classList.toggle('hidden', t !== 'crystal');
+            if(pt) pt.classList.toggle('hidden', t === 'crystal');
+            document.getElementById('tab-crystal')?.classList.toggle('active', t === 'crystal');
+            document.getElementById('tab-train')?.classList.toggle('active', t === 'train');
+        },
+        addCrystal: () => {
+            const inp = document.getElementById('crystal-input');
+            if(!inp || !inp.value) return;
+            STATE.crystals.unshift({ id: Date.now(), txt: inp.value });
+            localStorage.setItem(KEYS.CRYSTAL, JSON.stringify(STATE.crystals));
+            inp.value = ''; Cortex.renderCrystals();
+            toast('Memória Cristalizada');
+        },
+        renderCrystals: () => {
+            const el = document.getElementById('crystal-list');
+            if(!el) return;
+            el.innerHTML = STATE.crystals.map(c => `
+                <div class="glass-card p-4 border-l-4 flex justify-between items-center group" style="border-color: ${STATE.currentColor}44;display:flex;justify-content:space-between;align-items:center;padding:1rem;border-left:4px solid ${STATE.currentColor}44;border-radius:12px;">
+                    <p class="text-sm font-medium text-white/80" style="margin:0 1rem 0 0">"${escapeHtml(c.txt)}"</p>
+                    <button onclick="Cortex.delCrystal(${c.id})" class="opacity-0 group-hover:opacity-100 text-red-400 transition" style="background:none;border:none;color:#ff6b6b;cursor:pointer;">
+                        <i data-lucide="trash"></i>
+                    </button>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        },
+        delCrystal: (id) => {
+            STATE.crystals = STATE.crystals.filter(c => c.id !== id);
+            localStorage.setItem(KEYS.CRYSTAL, JSON.stringify(STATE.crystals));
+            Cortex.renderCrystals();
+        },
+        saveTrain: () => {
+            const editor = document.getElementById('train-editor');
+            if(editor) localStorage.setItem(KEYS.TRAIN_TXT, editor.value);
+            localStorage.setItem(KEYS.TRAIN_ACTIVE, '1');
+            toast('Matriz Sincronizada');
+        }
+    };
+
+    // --- KEYS MANAGER ---
+    const KeysManager = {
+        render: () => {
+            const list = document.getElementById('vKeysList');
+            if(!list) return;
+            list.innerHTML = Object.values(KEYS).map(k => {
+                const val = localStorage.getItem(k) || '';
+                return `
+                    <div class="space-y-1" style="display:flex;flex-direction:column;gap:.25rem;">
+                        <label class="text-[8px] font-black text-white/30 uppercase tracking-[0.2em]" style="font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:.12em;">${k}</label>
+                        <input type="text" data-key="${k}" value="${escapeHtml(val)}" class="w-full bg-white/5 border border-white/5 rounded-xl px-4 py-3 text-xs font-mono text-white/90 focus:border-white/30 outline-none transition" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:.75rem;font-family:var(--mono);color:var(--active-color);">
+                    </div>
+                `;
+            }).join('');
+        },
+        save: () => {
+            const inputs = document.querySelectorAll('#vKeysList input');
+            inputs.forEach(i => {
+                if(i.value) localStorage.setItem(i.dataset.key, i.value);
+                else localStorage.removeItem(i.dataset.key);
+            });
+            toast('Reboot do Sistema...');
+            setTimeout(() => location.reload(), 1500);
+        }
+    };
+
+    // --- DUALTUBE ---
+    const DualTube = {
+        data: [
+            { 
+                cat: 'Trilhas e Ativações', 
+                vids: ["Bt_rLbMjJDk", "_0wVkryxanE", "Id2NI9tv1r4"],
+                desc: 'Aromas, Arquétipos e Playlists'
+            },
+            { 
+                cat: 'Sinopses Essenciais', 
+                vids: ["qldgs0aLdB0", "FbutKMpd8MY", "1L9_rFmIGJ8"],
+                desc: 'Dopamina, Espaço da Mente, Recompensa'
+            },
+            { 
+                cat: 'Ambiente e Mente', 
+                vids: ["koKhjQKGJSc", "KrtOVrk8aDk"],
+                desc: 'Poder das cortinas e o chão'
+            },
+            { 
+                cat: 'Neurociência', 
+                vids: ["NBWDV6xjUP0", "dGYbN8jgdNQ", "JBjFhAutIVk", "GSBv45vigRE"],
+                desc: 'Dopamina, TDAH, Subconsciente'
+            },
+            { 
+                cat: 'Meditações Guiadas', 
+                vids: ["hfQ1L6fCfAo", "Tq99vQNQ6dQ", "DTDfkHwuMic", "OVfqxW_Xlhw", "kCHvLOtJIwQ"],
+                desc: 'Deriva, Navegando, Sinfonia'
+            }
+        ],
+        render: () => {
+            const container = document.getElementById('video-categories');
+            if(!container) return;
+            container.innerHTML = DualTube.data.map(c => `
+                <div class="space-y-4" style="display:flex;flex-direction:column;gap:.75rem;">
+                    <div class="flex flex-col">
+                        <h4 class="text-[12px] font-black uppercase tracking-[0.2em] text-white/80" style="margin:0;font-weight:800;">${escapeHtml(c.cat)}</h4>
+                        <p class="text-[9px] text-white/30 uppercase tracking-widest" style="margin:0;color:rgba(255,255,255,0.3);letter-spacing:.12em;">${escapeHtml(c.desc)}</p>
+                    </div>
+                    <div class="video-row">
+                        ${c.vids.map(id => `
+                            <div onclick="playVideo('${id}')" class="video-card glass-card overflow-hidden active:scale-95 transition cursor-pointer group" style="cursor:pointer;">
+                                <img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" class="w-full h-28 object-cover" style="width:100%;height:7rem;object-fit:cover;opacity:.85">
+                                <div class="p-3 text-[10px] font-bold text-white/60 truncate uppercase tracking-widest flex items-center gap-2" style="display:flex;align-items:center;gap:.5rem;padding:.75rem;color:rgba(255,255,255,0.6);font-weight:700;">
+                                    <i data-lucide="play-circle" class="w-3 h-3 text-dynamic"></i> Reprod.
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+    };
+
+    function playVideo(id) {
+        const overlay = document.getElementById('player-overlay');
+        if(overlay){
+          overlay.style.display = 'flex';
+          overlay.classList.remove('hidden');
+        }
+        const embed = document.getElementById('yt-embed');
+        if(embed){
+          // embed YouTube (still external)
+          embed.innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${id}?autoplay=1" frameborder="0" allowfullscreen style="border:0;"></iframe>`;
+        }
+    }
+    function closePlayer() {
+        const overlay = document.getElementById('player-overlay');
+        if(overlay){
+          overlay.style.display = 'none';
+          overlay.classList.add('hidden');
+        }
+        const embed = document.getElementById('yt-embed');
+        if(embed) embed.innerHTML = '';
+    }
+
+    function toast(m, time = 2500) {
+        const t = document.getElementById('di_toast');
+        if(!t) return;
+        const d = document.createElement('div');
+        d.className = "glass-pill bg-black/90 border-dynamic px-8 py-3 shadow-2xl backdrop-blur-xl text-xs font-bold uppercase tracking-widest text-center";
+        d.style.color = STATE.currentColor;
+        d.style.borderColor = STATE.currentColor; // Fix for border color
+        d.style.background = 'rgba(0,0,0,0.85)';
+        d.style.padding = '.75rem 2rem';
+        d.style.borderRadius = '20px';
+        d.style.display = 'inline-block';
+        d.style.pointerEvents = 'auto';
+        d.innerText = m; t.appendChild(d);
+        setTimeout(()=>d.remove(), time);
+    }
+
+    // small helper
+    function escapeHtml(str){ return String(str).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  </script>
+</body>
+</html>
