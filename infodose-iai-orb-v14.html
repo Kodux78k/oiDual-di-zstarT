@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Fusion OS v12 — Architect</title>
+
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    :root {
+      --bg: #020203;
+      --glass: rgba(255, 255, 255, 0.03);
+      --glass-border: rgba(255, 255, 255, 0.07);
+      --active-color: #7afff5;
+      --active-glow: rgba(122, 255, 245, 0.15);
+    }
+
+    * { 
+      box-sizing: border-box; 
+      -webkit-tap-highlight-color: transparent; 
+      outline: none; 
+    }
+    
+    body { 
+      background: var(--bg); 
+      color: #fff; 
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial;
+      overflow: hidden; 
+      height: 100vh; width: 100vw;
+      user-select: none;
+    }
+
+    /* --- BACKGROUND ATMOSPHERE --- */
+    .ambient-glow {
+        position: fixed; pointer-events: none; z-index: 0;
+        border-radius: 50%; filter: blur(120px); opacity: 0.15;
+        transition: background 1.2s ease, opacity 1s ease;
+    }
+    #glow-top { top: -25%; left: -10%; width: 90vw; height: 90vw; background: var(--active-color); }
+    #glow-bottom { bottom: -20%; right: -10%; width: 70vw; height: 70vw; background: var(--active-color); opacity: 0.05; }
+
+    /* --- VIEWPORT ENGINE --- */
+    #universe-viewport {
+      display: flex;
+      width: 300vw;
+      height: 100vh;
+      transform: translateX(-100vw);
+      transition: transform 0.7s cubic-bezier(0.19, 1, 0.22, 1);
+      position: relative; z-index: 10;
+    }
+
+    .screen-panel {
+      width: 100vw; height: 100vh;
+      position: relative; flex-shrink: 0;
+    }
+
+    .vertical-scroll-container {
+      height: 100vh;
+      overflow-y: auto;
+      scroll-snap-type: y mandatory;
+      scrollbar-width: none;
+    }
+    .vertical-scroll-container::-webkit-scrollbar { display: none; }
+
+    .v-section {
+      min-height: 100vh;
+      width: 100%;
+      scroll-snap-align: start;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 100px 24px;
+    }
+
+    /* --- GLASS MORPHISM --- */
+    .glass-card {
+      background: var(--glass);
+      backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+      border: 1px solid var(--glass-border);
+      border-radius: 32px;
+    }
+
+    .glass-pill {
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 100px;
+      padding: 8px 16px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    /* --- THE BRABO ORB --- */
+    #orbContainer {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 280px;
+      height: 280px;
+    }
+
+    .orb-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.05);
+      pointer-events: none;
+    }
+
+    .orb-core-bg {
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      background: var(--active-color);
+      filter: blur(50px);
+      opacity: 0.2;
+      transition: background 1s ease;
+    }
+
+    .orb-center-hub {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 0 20px rgba(255,255,255,0.05);
+    }
+
+    .orb-pulse-dot {
+      width: 10px;
+      height: 10px;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: 0 0 15px #fff, 0 0 30px var(--active-color);
+      animation: core-pulse 3s infinite ease-in-out;
+    }
+
+    @keyframes core-pulse {
+      0%, 100% { transform: scale(1); opacity: 0.8; filter: brightness(1); }
+      50% { transform: scale(1.4); opacity: 1; filter: brightness(1.5) blur(1px); }
+    }
+
+    @keyframes orbit-cw { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes orbit-ccw { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+
+    /* --- UI ELEMENTS --- */
+    .tab-btn { opacity: 0.3; transition: 0.3s; position: relative; }
+    .tab-btn.active { opacity: 1; color: var(--active-color); }
+    .tab-btn.active::after {
+        content: ''; position: absolute; bottom: -8px; left: 0; width: 100%; height: 2px;
+        background: var(--active-color); box-shadow: 0 0 10px var(--active-color);
+    }
+
+    .video-row {
+        display: flex; gap: 16px; overflow-x: auto; padding: 20px 0;
+        scrollbar-width: none;
+    }
+    .video-row::-webkit-scrollbar { display: none; }
+    .video-card { width: 240px; flex-shrink: 0; cursor: pointer; }
+
+    #nav-indicator {
+        position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+        display: flex; gap: 10px; z-index: 80;
+    }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: 0.4s; }
+    .dot.active { width: 30px; background: var(--active-color); box-shadow: 0 0 15px var(--active-color); }
+
+    .text-dynamic { color: var(--active-color); transition: color 0.8s ease; }
+    .border-dynamic { border-color: var(--active-color); transition: border-color 0.8s ease; }
+  </style>
+</head>
+<body>
+
+  <div id="glow-top" class="ambient-glow"></div>
+  <div id="glow-bottom" class="ambient-glow"></div>
+
+  <header class="fixed top-0 left-0 right-0 z-[100] px-8 py-10 flex justify-between items-start pointer-events-none">
+    <div class="glass-pill flex items-center gap-3 pointer-events-auto active:scale-95 transition" onclick="Navigation.to(1)">
+      <div id="header-dot" class="w-1.5 h-1.5 rounded-full animate-ping" style="background: var(--active-color)"></div>
+      <span id="displayUserHeader" class="text-[9px] tracking-[0.2em]">CARREGANDO...</span>
+    </div>
+    <div class="glass-pill flex items-center gap-2 pointer-events-auto">
+       <span id="displayInfodoseHeader" class="text-[8px] text-white/40">SISTEMA V12</span>
+    </div>
+  </header>
+
+  <div id="universe-viewport">
+      
+      <!-- [0] CORTEX (Memórias) -->
+      <section class="screen-panel" id="view-cortex">
+          <div class="pt-32 px-8 h-full flex flex-col max-w-lg mx-auto">
+              <div class="flex items-end justify-between mb-10">
+                  <div>
+                    <h2 class="text-3xl font-black uppercase tracking-tighter italic">Córtex</h2>
+                    <p class="text-[8px] tracking-[0.3em] text-white/30 uppercase mt-1">Base de Dados Mental</p>
+                  </div>
+                  <div class="flex gap-6 text-[9px] font-black uppercase tracking-widest pb-1">
+                      <button onclick="Cortex.switch('crystal')" id="tab-crystal" class="tab-btn active text-dynamic">Cristal</button>
+                      <button onclick="Cortex.switch('train')" id="tab-train" class="tab-btn">Matriz</button>
+                  </div>
+              </div>
+              
+              <div class="flex-1 overflow-y-auto pb-40 no-scrollbar">
+                  <div id="panel-crystal" class="space-y-4">
+                      <div id="crystal-list" class="grid gap-3"></div>
+                      <div class="glass-card p-2 flex items-center mt-8">
+                          <input id="crystal-input" class="flex-1 bg-transparent px-4 py-3 text-sm text-white placeholder-white/20 outline-none" placeholder="Nova memória...">
+                          <button onclick="Cortex.addCrystal()" class="bg-white/5 hover:bg-white/10 px-6 py-3 rounded-2xl text-dynamic font-black text-[10px] uppercase transition">Fixar</button>
+                      </div>
+                  </div>
+                  <div id="panel-train" class="hidden animate-in fade-in duration-500">
+                      <div class="h-96 glass-card p-6 border-dynamic/20">
+                          <textarea id="train-editor" class="w-full h-full bg-transparent border-none text-[11px] font-mono leading-relaxed text-white/60 resize-none outline-none" placeholder="Injete código ou diretrizes aqui..."></textarea>
+                      </div>
+                      <button onclick="Cortex.saveTrain()" class="mt-4 glass-pill w-full text-center text-dynamic py-4 border-dynamic/30 hover:bg-white/5 transition">Sincronizar Protocolo</button>
+                  </div>
+              </div>
+          </div>
+      </section>
+
+      <!-- [1] NEXUS (Home) -->
+      <section class="screen-panel" id="view-nexus">
+          <div class="vertical-scroll-container">
+              
+              <div class="v-section">
+                  <div class="text-center mb-16">
+                      <h1 id="hero-title" class="text-7xl font-black tracking-tighter mb-4 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/10">Nexus</h1>
+                      <div class="flex items-center justify-center gap-4">
+                        <span class="w-12 h-[1px] bg-white/10"></span>
+                        <p class="text-[9px] uppercase tracking-[0.8em] text-white/20 font-light">Infinite Architect</p>
+                        <span class="w-12 h-[1px] bg-white/10"></span>
+                      </div>
+                  </div>
+
+                  <!-- THE REFINED ORB -->
+                  <div id="orbClickable" class="relative cursor-pointer group p-10"
+                       onmousedown="OrbDrag.start(event)" ontouchstart="OrbDrag.start(event)"
+                       onmouseup="OrbDrag.end()" ontouchend="OrbDrag.end()"
+                       onmousemove="OrbDrag.move(event)" ontouchmove="OrbDrag.move(event)">
+                     
+                     <div id="orbContainer" class="transition-transform duration-300 pointer-events-none">
+                        <!-- Orbiting Rings -->
+                        <div class="orb-ring w-full h-full" style="animation: orbit-cw 25s linear infinite"></div>
+                        <div class="orb-ring inset-6 border-white/10" style="animation: orbit-ccw 18s linear infinite"></div>
+                        <div class="orb-ring inset-12 border-white/5" style="animation: orbit-cw 12s linear infinite"></div>
+                        
+                        <!-- Glow & Core -->
+                        <div id="orb-core" class="orb-core-bg"></div>
+                        
+                        <div class="orb-center-hub backdrop-blur-3xl">
+                           <div class="absolute inset-0 rounded-full bg-white/5 animate-pulse"></div>
+                           <div class="orb-pulse-dot"></div>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div class="mt-16 animate-bounce text-white/10"><i data-lucide="chevron-down"></i></div>
+              </div>
+
+              <!-- Modulação Section -->
+              <div class="v-section">
+                  <div class="glass-card w-full max-w-md p-10 space-y-10">
+                      <header class="text-center">
+                        <h3 class="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">Neural States</h3>
+                      </header>
+                      <div class="grid grid-cols-2 gap-4">
+                          <button onclick="Atmosphere.set('gamma')" class="glass-card p-6 flex flex-col items-center gap-4 active:scale-95 transition hover:bg-white/5 border-white/5">
+                              <i data-lucide="zap" class="text-blue-400 w-5 h-5"></i>
+                              <span class="text-[9px] font-black uppercase tracking-widest text-blue-100">Gamma</span>
+                          </button>
+                          <button onclick="Atmosphere.set('alpha')" class="glass-card p-6 flex flex-col items-center gap-4 active:scale-95 transition hover:bg-white/5 border-white/5">
+                              <i data-lucide="sparkles" class="text-purple-400 w-5 h-5"></i>
+                              <span class="text-[9px] font-black uppercase tracking-widest text-purple-100">Alpha</span>
+                          </button>
+                          <button onclick="Atmosphere.set('theta')" class="glass-card p-6 flex flex-col items-center gap-4 active:scale-95 transition hover:bg-white/5 border-white/5">
+                              <i data-lucide="moon" class="text-emerald-400 w-5 h-5"></i>
+                              <span class="text-[9px] font-black uppercase tracking-widest text-emerald-100">Theta</span>
+                          </button>
+                          <button onclick="Atmosphere.set('delta')" class="glass-card p-6 flex flex-col items-center gap-4 active:scale-95 transition hover:bg-white/5 border-white/5">
+                              <i data-lucide="waves" class="text-cyan-400 w-5 h-5"></i>
+                              <span class="text-[9px] font-black uppercase tracking-widest text-cyan-100">Delta</span>
+                          </button>
+                      </div>
+                  </div>
+              </div>
+
+              <!-- Settings Section -->
+              <div class="v-section">
+                  <div class="glass-card w-full max-w-md p-8 flex flex-col min-h-[50vh]">
+                      <div class="flex justify-between items-center mb-8">
+                        <h3 class="text-xs font-black uppercase tracking-[0.3em] text-dynamic">Architect Config</h3>
+                        <i data-lucide="settings-2" class="w-4 h-4 text-white/20"></i>
+                      </div>
+                      <div id="vKeysList" class="flex-1 space-y-5 overflow-y-auto pr-2 no-scrollbar"></div>
+                      <button onclick="KeysManager.save()" class="mt-8 glass-pill bg-white/5 text-dynamic border-dynamic/30 w-full py-5 font-black tracking-[0.2em]">
+                          REBOOT SYSTEM
+                      </button>
+                  </div>
+              </div>
+
+          </div>
+      </section>
+
+      <!-- [2] DUALTUBE -->
+      <section class="screen-panel" id="view-dualtube">
+          <div class="pt-32 px-8 h-full flex flex-col overflow-y-auto pb-40 no-scrollbar">
+              <div class="mb-12">
+                <h2 class="text-4xl font-black italic">DualTube</h2>
+                <div class="h-1 w-12 bg-dynamic mt-2"></div>
+              </div>
+              <div id="video-categories" class="space-y-16"></div>
+          </div>
+      </section>
+  </div>
+
+  <!-- NAVIGATION INDICATOR -->
+  <div id="nav-indicator">
+      <div class="dot" onclick="Navigation.to(0)" id="dot-0"></div>
+      <div class="dot active" onclick="Navigation.to(1)" id="dot-1"></div>
+      <div class="dot" onclick="Navigation.to(2)" id="dot-2"></div>
+  </div>
+
+  <!-- PLAYER OVERLAY -->
+  <div id="player-overlay" class="fixed inset-0 z-[200] bg-black/95 backdrop-blur-3xl hidden flex-col transition-all">
+      <div class="p-8 flex justify-between items-center">
+          <div class="glass-pill border-white/10">Sessão Ativa</div>
+          <button onclick="closePlayer()" class="glass-pill border-red-500/30 text-red-500 bg-red-500/5">Finalizar</button>
+      </div>
+      <div class="flex-1 flex items-center justify-center p-4">
+          <div id="yt-embed" class="w-full max-w-5xl aspect-video bg-black rounded-[40px] border border-white/10 overflow-hidden shadow-2xl"></div>
+      </div>
+  </div>
+
+  <div id="di_toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[300] pointer-events-none flex flex-col gap-3 w-max max-w-[85vw]"></div>
+
+  <script>
+    const KEYS = {
+        USER: 'di_userName',
+        INFODOSE: 'di_infodoseName',
+        API: 'di_apiKey',
+        MODEL: 'di_modelName',
+        TRAIN_TXT: 'di_trainingText',
+        CRYSTAL: 'di_cristalizados'
+    };
+
+    const STATE = {
+        screen: 1,
+        crystals: [],
+        currentColor: '#7afff5'
+    };
+
+    window.onload = () => {
+        lucide.createIcons();
+        initData();
+        Navigation.to(1);
+    };
+
+    function initData() {
+        const user = localStorage.getItem(KEYS.USER) || 'Piloto';
+        const info = localStorage.getItem(KEYS.INFODOSE) || 'FUSION';
+        
+        document.getElementById('displayUserHeader').innerText = user.toUpperCase();
+        document.getElementById('displayInfodoseHeader').innerText = info.toUpperCase() + ' V12';
+        document.getElementById('hero-title').innerText = info;
+
+        try { STATE.crystals = JSON.parse(localStorage.getItem(KEYS.CRYSTAL) || '[]'); } catch(e){}
+        Cortex.renderCrystals();
+        document.getElementById('train-editor').value = localStorage.getItem(KEYS.TRAIN_TXT) || '';
+
+        KeysManager.render();
+        DualTube.render();
+    }
+
+    const Atmosphere = {
+        set: (type) => {
+            const root = document.documentElement.style;
+            let color, msg;
+
+            switch(type) {
+                case 'gamma': color = '#3b82f6'; msg = 'Gama: Hiper-processamento'; break;
+                case 'alpha': color = '#a855f7'; msg = 'Alfa: Fluxo Criativo'; break;
+                case 'theta': color = '#10b981'; msg = 'Teta: Imersão Profunda'; break;
+                case 'delta': color = '#7afff5'; msg = 'Delta: Restauração'; break;
+                default: color = '#7afff5';
+            }
+
+            STATE.currentColor = color;
+            root.setProperty('--active-color', color);
+            document.getElementById('orb-core').style.backgroundColor = color;
+            document.getElementById('header-dot').style.backgroundColor = color;
+            
+            toast(msg);
+        }
+    };
+
+    const Navigation = {
+        to: (idx) => {
+            STATE.screen = idx;
+            document.getElementById('universe-viewport').style.transform = `translateX(-${idx * 100}vw)`;
+            [0,1,2].forEach(i => document.getElementById(`dot-${i}`).classList.toggle('active', i === idx));
+        }
+    };
+
+    // SWIPE HANDLER
+    let tsX = 0, tsY = 0;
+    document.addEventListener('touchstart', e => { tsX = e.touches[0].clientX; tsY = e.touches[0].clientY; }, {passive:true});
+    document.addEventListener('touchend', e => {
+        const dX = tsX - e.changedTouches[0].clientX;
+        const dY = tsY - e.changedTouches[0].clientY;
+        if(Math.abs(dX) > Math.abs(dY) && Math.abs(dX) > 80) {
+            if(dX > 0 && STATE.screen < 2) Navigation.to(STATE.screen + 1);
+            if(dX < 0 && STATE.screen > 0) Navigation.to(STATE.screen - 1);
+        }
+    }, {passive:true});
+
+    const OrbDrag = {
+        active: false, startX: 0, el: null,
+        start: function(e) { 
+            this.active = true; 
+            this.startX = e.type.includes('mouse')?e.clientX:e.touches[0].clientX; 
+            this.el = document.getElementById('orbContainer');
+        },
+        move: function(e) {
+            if(!this.active) return;
+            const x = e.type.includes('mouse')?e.clientX:e.touches[0].clientX;
+            const diff = x - this.startX;
+            if (Math.abs(diff) > 5) {
+                this.el.style.transform = `translateX(${diff/2.5}px) rotate(${diff/15}deg)`; 
+            }
+        },
+        end: function() {
+            if(!this.active) return;
+            this.active = false;
+            const style = window.getComputedStyle(this.el);
+            const matrix = new WebKitCSSMatrix(style.transform);
+            if(matrix.m41 > 100) Navigation.to(2);
+            else if(matrix.m41 < -100) Navigation.to(0);
+            this.el.style.transform = 'translateX(0) rotate(0)';
+        }
+    };
+
+    const Cortex = {
+        switch: (t) => {
+            document.getElementById('panel-crystal').classList.toggle('hidden', t !== 'crystal');
+            document.getElementById('panel-train').classList.toggle('hidden', t !== 'train');
+            document.getElementById('tab-crystal').classList.toggle('active', t === 'crystal');
+            document.getElementById('tab-train').classList.toggle('active', t === 'train');
+        },
+        addCrystal: () => {
+            const inp = document.getElementById('crystal-input');
+            if(!inp.value) return;
+            STATE.crystals.unshift({ id: Date.now(), txt: inp.value });
+            localStorage.setItem(KEYS.CRYSTAL, JSON.stringify(STATE.crystals));
+            inp.value = ''; Cortex.renderCrystals();
+            toast('Memória Ancorada');
+        },
+        renderCrystals: () => {
+            const el = document.getElementById('crystal-list');
+            el.innerHTML = STATE.crystals.length ? STATE.crystals.map(c => `
+                <div class="glass-card p-5 flex justify-between items-center group animate-in slide-in-from-left duration-300">
+                    <p class="text-[13px] font-medium text-white/70 italic">"${c.txt}"</p>
+                    <button onclick="Cortex.delCrystal(${c.id})" class="text-red-500/20 hover:text-red-500 transition">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            `).join('') : '<p class="text-center py-10 text-[10px] uppercase tracking-widest text-white/10">Vazio</p>';
+            lucide.createIcons();
+        },
+        delCrystal: (id) => {
+            STATE.crystals = STATE.crystals.filter(c => c.id !== id);
+            localStorage.setItem(KEYS.CRYSTAL, JSON.stringify(STATE.crystals));
+            Cortex.renderCrystals();
+        },
+        saveTrain: () => {
+            localStorage.setItem(KEYS.TRAIN_TXT, document.getElementById('train-editor').value);
+            toast('Matriz Atualizada');
+        }
+    };
+
+    const KeysManager = {
+        render: () => {
+            const list = document.getElementById('vKeysList');
+            list.innerHTML = Object.entries(KEYS).map(([label, k]) => {
+                const val = localStorage.getItem(k) || '';
+                return `
+                    <div class="space-y-2">
+                        <label class="text-[7px] font-black text-white/20 uppercase tracking-[0.3em] ml-2">${label}</label>
+                        <input type="text" data-key="${k}" value="${val}" class="w-full bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4 text-xs text-white outline-none focus:border-dynamic/40 transition" style="color: var(--active-color)">
+                    </div>
+                `;
+            }).join('');
+        },
+        save: () => {
+            const inputs = document.querySelectorAll('#vKeysList input');
+            inputs.forEach(i => {
+                if(i.value) localStorage.setItem(i.dataset.key, i.value);
+                else localStorage.removeItem(i.dataset.key);
+            });
+            toast('Reiniciando Núcleo...');
+            setTimeout(() => location.reload(), 1200);
+        }
+    };
+
+    const DualTube = {
+        data: [
+            { cat: 'Sincronização Visual', vids: ["Bt_rLbMjJDk", "_0wVkryxanE", "Id2NI9tv1r4"] },
+            { cat: 'Cognição Elevada', vids: ["NBWDV6xjUP0", "dGYbN8jgdNQ", "JBjFhAutIVk"] }
+        ],
+        render: () => {
+            const container = document.getElementById('video-categories');
+            container.innerHTML = DualTube.data.map(c => `
+                <div class="space-y-6">
+                    <h4 class="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 border-l-2 border-dynamic pl-4">${c.cat}</h4>
+                    <div class="video-row">
+                        ${c.vids.map(id => `
+                            <div onclick="playVideo('${id}')" class="video-card glass-card overflow-hidden active:scale-95 transition">
+                                <img src="https://img.youtube.com/vi/${id}/mqdefault.jpg" class="w-full h-32 object-cover opacity-60">
+                                <div class="p-4 text-[9px] font-black text-white/40 uppercase tracking-widest flex items-center justify-between">
+                                    <span>Stream</span>
+                                    <i data-lucide="play" class="w-3 h-3 text-dynamic"></i>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+    };
+
+    function playVideo(id) {
+        document.getElementById('player-overlay').classList.remove('hidden');
+        document.getElementById('yt-embed').innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${id}?autoplay=1&modestbranding=1&rel=0" frameborder="0" allowfullscreen></iframe>`;
+    }
+    function closePlayer() {
+        document.getElementById('player-overlay').classList.add('hidden');
+        document.getElementById('yt-embed').innerHTML = '';
+    }
+
+    function toast(m) {
+        const t = document.getElementById('di_toast');
+        const d = document.createElement('div');
+        d.className = "glass-pill bg-black/90 border-dynamic/40 px-10 py-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)] text-[10px] font-black uppercase tracking-widest animate-in slide-in-from-bottom-4 duration-300";
+        d.style.color = STATE.currentColor;
+        d.innerText = m; t.appendChild(d);
+        setTimeout(()=> {
+            d.classList.add('opacity-0', 'translate-y-4');
+            setTimeout(()=>d.remove(), 500);
+        }, 3000);
+    }
+  </script>
+</body>
+</html>
+
